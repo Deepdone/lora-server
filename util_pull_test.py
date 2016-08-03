@@ -21,7 +21,9 @@
 # instead of binary; it's directly supported by frameworks such as Twisted.
 
 from enum import Enum, unique
-import struct, binascii, socket, json
+import struct, binascii, socket
+import json
+
 
 PROTOCOL_VERSION = 2
 
@@ -38,12 +40,25 @@ class PKT_TYPE(Enum):
 
 class FrameHead():
 
-    def __init__(self, ver, token, plt_type):
+    def __init__(self, ver=PROTOCOL_VERSION, token=0, plt_type=PKT_TYPE.PUSH_DATA.value):
         self.structs = struct.Struct("<BHB")
         self.ver = ver
         self.token = token
         self.plt_type = plt_type
         self.data = self.structs.pack(self.ver, self.token, self.plt_type)
+        self._len = len(self.data)
+
+    @property
+    def len(self):
+        return self._len
+
+    @classmethod
+    def parse(cls, data):
+        cls = FrameHead()
+        cls.data = data
+        cls.ver, cls.token, cls.plt_type = cls.structs.unpack(cls.data[:cls._len])
+        return cls
+
 
 
 class FrameMac():
@@ -93,6 +108,8 @@ packet = {
 
 packet['rxpk'].append(node)
 
+# head = FrameHead(2, 65535, PKT_TYPE.PULL_DATA.value)
+# test = FrameHead.parse(head.data)
 
 def udpclient():
 
@@ -100,12 +117,16 @@ def udpclient():
     addr = ("localhost", 1680)
     # pull data
     print("-----PULL DATA-----")
-    head = FrameHead(2, 65535, PKT_TYPE.PULL_DATA.value)
+    head = FrameHead(PROTOCOL_VERSION, 65535, PKT_TYPE.PULL_DATA.value)
     macaddr = FrameMac(11)
-    print(head.data+macaddr.data)
-    sdl = client_sock.sendto(head.data+macaddr.data, addr)
+    send_data = head.data + macaddr.data
+    sdl = client_sock.sendto(send_data, addr)
+    print("send data %s" % (send_data))
+
     recv_data, recv_addr = client_sock.recvfrom(1024)
-    print("send %d data, recv data: %s" % (sdl, recv_data))
+    print("recv data: %s" % (recv_data))
+
+    recv_head = FrameHead.parse(recv_data)
 
     # push data
     print("-----PUSH DATA-----")
@@ -119,4 +140,5 @@ def udpclient():
 
 
 if __name__ == "__main__":
+    print("call...")
     udpclient()
