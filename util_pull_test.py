@@ -87,23 +87,23 @@ class FramePayload():
 
 
 node = {
-    'time': '2013-03-31T16:21:17.532038Z',
-    'tmst': 3316387610,
-    'chan': 0,
-    'rfch': 0,
-    'freq': 863.00981,
-    'stat': 1,
-    'modu': 'LORA',
-    'datr': 'SF10BW125',
-    'codr': '4/7',
-    'rssi': -38,
-    'lsnr': 5.5,
-    'size': 32,
-    'data': 'ysgRl452xNLep9S1NTIg2lomKDxUgn3DJ7DE+b00Ass'
+    'time':'2013-03-31T16:21:17.532038Z',
+    'tmst':3316387610,
+    'chan':0,
+    'rfch':0,
+    'freq':863.00981,
+    'stat':1,
+    'modu':'LORA',
+    'datr':'SF10BW125',
+    'codr':'4/7',
+    'rssi':-38,
+    'lsnr':5.5,
+    'size':32,
+    'data':'ysgRl452xNLep9S1NTIg2lomKDxUgn3DJ7DE+b00Ass'
 }
 
 packet = {
-    'rxpk': []
+    'rxpk':[]
 }
 
 packet['rxpk'].append(node)
@@ -130,11 +130,14 @@ def udpclient():
 
     # push data
     print("-----PUSH DATA-----")
-    head = FrameHead(2, 65535, PKT_TYPE.PUSH_DATA.value)
+    head = FrameHead(PROTOCOL_VERSION, 65535, PKT_TYPE.PUSH_DATA.value)
     macaddr = FrameMac(11)
     payload = FramePayload(packet)
-    print(payload.data)
-    sdl = client_sock.sendto(head.data+macaddr.data+payload.data.encode(), addr)
+    send_data = head.data+macaddr.data+payload.data.encode()
+    sdl = client_sock.sendto(send_data, addr)
+    print("send data %s" % (send_data))
+    recv_data, recv_addr = client_sock.recvfrom(1024)
+    print("recv data: %s" % (recv_data))
 
     client_sock.close()
 
