@@ -21,7 +21,7 @@
 # instead of binary; it's directly supported by frameworks such as Twisted.
 
 from enum import Enum, unique
-import struct, binascii, socket
+import struct, binascii, socket, json
 
 PROTOCOL_VERSION = 2
 
@@ -59,14 +59,47 @@ class FrameMac():
         self.data = self.structs.pack(self.address)
 
 
-class FramePayload():
-    def __init__(self, *args, **kargs):
+class Node():
+    def __init__(self):
         pass
 
 
+class FramePayload():
+    def __init__(self, pld):
+        self.structs = struct.Struct("%ds" % len(pld))
+        self.pld = pld
+        self.data = json.dumps(self.pld)
+
+
+node = {
+    'time': '2013-03-31T16:21:17.532038Z',
+    'tmst': 3316387610,
+    'chan': 0,
+    'rfch': 0,
+    'freq': 863.00981,
+    'stat': 1,
+    'modu': 'LORA',
+    'datr': 'SF10BW125',
+    'codr': '4/7',
+    'rssi': -38,
+    'lsnr': 5.5,
+    'size': 32,
+    'data': 'ysgRl452xNLep9S1NTIg2lomKDxUgn3DJ7DE+b00Ass'
+}
+
+packet = {
+    'rxpk': []
+}
+
+packet['rxpk'].append(node)
+
+
 def udpclient():
+
     client_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     addr = ("localhost", 1680)
+    # pull data
+    print("-----PULL DATA-----")
     head = FrameHead(2, 65535, PKT_TYPE.PULL_DATA.value)
     macaddr = FrameMac(11)
     print(head.data+macaddr.data)
@@ -74,7 +107,16 @@ def udpclient():
     recv_data, recv_addr = client_sock.recvfrom(1024)
     print("send %d data, recv data: %s" % (sdl, recv_data))
 
+    # push data
+    print("-----PUSH DATA-----")
+    head = FrameHead(2, 65535, PKT_TYPE.PUSH_DATA.value)
+    macaddr = FrameMac(11)
+    payload = FramePayload(packet)
+    print(payload.data)
+    sdl = client_sock.sendto(head.data+macaddr.data+payload.data.encode(), addr)
+
     client_sock.close()
+
 
 if __name__ == "__main__":
     udpclient()
