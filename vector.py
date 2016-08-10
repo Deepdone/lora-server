@@ -1,5 +1,4 @@
 # coding=utf-8
-import numpy as np
 import ctypes as cs
 
 class ListMetaClass(type):
@@ -19,7 +18,8 @@ class List(metaclass=ListMetaClass):
 
         
     def get_by_id(self, id):
-        index = self.find(id)
+        self.__check_type(id)
+        index = self.__find(id)
         if index >= self.lsize() or self.vector[index] != id:
             return -1
 
@@ -31,13 +31,15 @@ class List(metaclass=ListMetaClass):
         else:
             return self.vector[index]
 
-    def add(self, id):
-        self.__check_id( id)
-        print("step")
-        index = self.find(id)
-        if index == -1 or index >= self.lsize():
-            index = 0
-        pass
+    def add(self, element):
+        self.__check_type(element)
+        index = self.__find(element.values())
+        if index >= self.lsize():
+            self.vector.append(element)
+        else:
+            if self.vector[index].values() != element.values():
+                self.vector.insert(index, element)
+        return index
 
     def del_by_id(self, id):
         pass
@@ -51,22 +53,46 @@ class List(metaclass=ListMetaClass):
     def lsize(self):
         return len(self.vector)
 
-    def find(self, id):
+    def __find(self, id):
+
         if self.lsize() == 0:
             return 0
 
         base = 0
-        top = len(self.vector) - 1
+        top = self.lsize() - 1
 
-    def __check_id(self, id):
+        while (top-base)>1:
+            test_index = int((top-base)/2 + base)
+            test_id = self.vector[test_index].values()
+            if id == test_id:
+                return test_index
+            elif id < test_id:
+                top = test_index
+            elif id > test_id:
+                base = test_index
+
+        if self.vector[base].values() == id:
+            return base
+        elif self.vector[top].values() == id:
+            return top
+        else:  # find none
+            return top+1
+
+
+    def __check_type(self, element):
         if self.__vector__ == "list32":
-            if not isinstance(id, uint32):
-                raise ValueError("Invalid value type, need uint32")
+            if not isinstance(element, uint32):
+                raise ValueError("Invalid values type, need uint32")
         elif self.__vector__ == "list64":
-            if not isinstance(id, uint64):
-                raise ValueError("Invalid value type, need uint64")
+            if not isinstance(element, uint64):
+                raise ValueError("Invalid values type, need uint64")
         else:
-            raise ValueError("Invalid value type")
+            raise ValueError("Invalid values type")
+
+
+    def pprint(self):
+        for i in range(self.lsize()):
+            print(self.vector[i].values())
 
 
 class uint32:
@@ -74,10 +100,16 @@ class uint32:
     def __init__(self, val):
         self.id = cs.c_uint32(val)
 
+    def values(self):
+        return self.id.value
+
 
 class uint64:
     def __init__(self, val):
         self.id = cs.c_uint64(val)
+
+    def values(self):
+        return self.id.value
 
 class List32(List):
     __vector__ = "list32"
@@ -90,6 +122,20 @@ class List64(List):
 
 if __name__ == '__main__':
     a = List32()
-    a.add(uint64(8))
+    a.add(uint32(8))
+    a.pprint()
+    a.add(uint32(9))
+    a.pprint()
+    a.add(uint32(3))
+    a.pprint()
+    a.add(uint32(2))
+    a.pprint()
+
+    a.add(uint32(15))
+    a.pprint()
+
+    a.add(uint32(11))
+    a.pprint()
+
     a.lsize()
 
