@@ -83,7 +83,10 @@ class FramePayload():
     def __init__(self, pld):
         self.structs = struct.Struct("%ds" % len(pld))
         self.pld = pld
-        self.data = json.dumps(self.pld)
+        print(len(json.dumps(self.pld)))
+        # separators=(',', ':') remove space
+        self.data = json.dumps(self.pld, separators=(',', ':'))
+        print(len(self.data))
 
 
 node = {
