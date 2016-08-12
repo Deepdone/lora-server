@@ -44,14 +44,14 @@ class data_record_fl(data_record):
             self.set_data(mydata)
 
     def set_data(self, mydata):
-         if not isinstance(data_list, list):
+        if not isinstance(data_list, list):
             raise ValueError("Invalid values type, need list")
         super(data_record_fl, self).set_data(mydata, len(mydata))
         
 
 class data_record_vl(data_record):
     def __init__(self, size_type, num, mydata=[]):
-        super(data_record, self).__init__(size_type, num, set_len=False)
+        super(data_record_vl, self).__init__(size_type, num, set_len=False)
         if len(mydata) != 0:
             self.set_data(mydata, len(mydata))
 
@@ -80,8 +80,13 @@ if __name__ == '__main__':
     a.initialise(7)
     print(a.acceptable_length_bytes(101))
 
-    b = data_record(int(), 100, set_len=False)
+    b = data_record_fl(int(), 100)
 
     c = data_record_vl(int(), 100)
-    c.initialise(8)
+
+    for x in range(100):
+        c.append_data(x, 1) 
+    print(c.data)
+
+    c.clear()
     print(c.data)
