@@ -13,7 +13,7 @@ root_logger = None
 
 class log:
 
-    def __init__(self, level, use_console=False, log_file="log.log"):
+    def __init__(self, level=logging.INFO, use_console=False, log_file="log.log"):
         self.lev = level
         self.use_console = use_console
 
