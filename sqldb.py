@@ -1,45 +1,53 @@
-import debug
-import aiomysql
+import pymysql
+import threading
+from debug import log
 
 
 def sql_log(sql, args=None):
-    debug.log_info('SQL: [%s] args: %s' % (sql, str(args or []])))
+    log.log_info('SQL: [%s] args: %s' % (sql, str(args or [])))
 
 
 class Server:
 
     def __init__(self, **kw):
-        self.host = kw.get('host', 'localhost'),
-        self.port = kw.get('port', self.default_port),
-        self.user = kw['user'],
-        self.passwd = kw['password'],
-        self.db = kw['db'],
-        self.charset = kw.get('charset', 'utf8'),
-        self.autocommit = kw.get('autocommit', True),
+        self.host = kw.get('host', 'localhost')
+        self.port = kw.get('port', 3306)
+        self.user = kw['user']
+        self.passwd = kw['password']
+        self.db = kw['db']
+        self.charset = kw.get('charset', 'utf8mb4')
+        self.autocommit = kw.get('autocommit', True)
         self._connected = False
+        self.mutex = threading.Lock()
+
+
+        self.connect()
+
+
+    def __lock(self):
+        self.mutex.acquire()
+
+    def __unlock(self):
+        self.mutex.release()
 
         
-    async def connect(self):
-        self.conn = await aiomysql.connect(
-            host = self.host,
-            port = self.port,
-            user = self.user,
-            password = self.passwd,
-            db = self.db,
-            charset = self.charset,
-            autocommit = self.autocommit
-            )
+    def connect(self):
+        self.conn = pymysql.connect(host=self.host,
+                                    port=self.port,
+                                    user=self.user,
+                                    password=self.passwd,
+                                    db=self.db,
+                                    charset=self.charset,
+                                    autocommit=self.autocommit)
+
         self._connected = True
         return self._connected
 
 
     def __del__(self):
-        self.__class__.disconnect()
-
-    async def disconnect(self):
         self.connect = False
         self.conn.close()
-        await self.conn.closed()
+
 
     @property
     def connected(self):
@@ -47,53 +55,54 @@ class Server:
     # @connected.setter
     # def connected(self, value):
     #     self._connected = value
-    
-    async def __select(self, sql, args, size=None):
+
+    # @classmethod
+    def select(cls, sql, args, size=None):
         sql_log(sql, args)
-        cur = await self.conn.cursor(aiomysql.DictCursor)
-        await cur.execute(sql.replace('?', '%s'), args or ())
-        if size:
-            rs = await cur.fetchmany(size)
-        else:
-            rs = await cur.fetchall()
-        await cur.close()
-        debug.log_info('row returned: %s' %len(rs))
+
+        try:
+            cls.__lock()
+            with cls.conn.cursor() as cursor:
+                cursor.execute(sql.replace('?', '%s'), args or ())
+                if size:
+                    rs = cursor.fetchmany(size)
+                else:
+                    rs = cursor.fetchall()
+        finally:
+            cursor.close()
+            log.log_info('row returned: %s' %len(rs))
+            cls.__unlock()
+            return rs
 
 
-    async def __execute(self, sql, args):
+    # @classmethod
+    def execute(cls, sql, args):
         sql_log(sql, args)
         try:
-            cur = await self.conn.cursor()
-            await cur.execute(sql.replace('?', '%s'), args)
-            affected = cur.rowcount
-            await cur.close()
+            cls.__lock()
+            with cls.conn.cursor() as cursor:
+                cursor.execute(sql.replace('?', '%s'), args)
+                affected = cursor.rowcount
+                cursor.close()
         except BaseException as e:
             raise
+        finally:
+            if not cls.autocommit:
+                    cls.conn.commit()
+            cursor.close()
+            cls.__unlock()
         return affected
 
-    @classmethod
-    async def create_pool(self, loop, **kw):
-        sql_log('create database connection pool...')
-        global __pool
-        __pool = await aiomysql.create_pool(
-            host = kw.get('host', 'localhost'),
-            port = kw.get('port', self.default_port),
-            user = kw['user'],
-            password = kw['password'],
-            db = kw['db'],
-            charset = kw.get('charset', 'utf8'),
-            autocommit = kw.get('autocommit', True),
-            maxsize = kw.get('maxsize', 10),
-            minsize = kw.get('minsize', 1),
-            loop = loop
-        )
 
-    @classmethod
-    async def close_pool(self):
-        sql_log('close database connection pool...')
-        global __pool
-        __pool.close()
-        await __pool.wait_closed()
+if __name__ == '__main__':
+    log()
+    server = Server(user='mysqldb', password='mysqldb',db='sqldb')
+    server.execute("INSERT INTO `users` (`email`, `password`) VALUES (%s, %s)",
+                               ('webmaster@python.org', 'very-secret'))
+
+    rs = server.select("select `id`, `password` from `users` where `email`=?",
+                  ('webmaster@python.org'))
+    print(rs)
 
 
 
