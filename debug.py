@@ -28,7 +28,6 @@ class log:
         _sh.setLevel(level)
         _sh.setFormatter(formatter)
         root_logger.addHandler(_sh)
-        print(root_logger)
 
         if(log_file is not None):
             _fh = logging.FileHandler(log_file)

@@ -20,9 +20,7 @@ class Server:
         self._connected = False
         self.mutex = threading.Lock()
 
-
         self.connect()
-
 
     def __lock(self):
         self.mutex.acquire()
@@ -30,7 +28,6 @@ class Server:
     def __unlock(self):
         self.mutex.release()
 
-        
     def connect(self):
         self.conn = pymysql.connect(host=self.host,
                                     port=self.port,
@@ -43,11 +40,9 @@ class Server:
         self._connected = True
         return self._connected
 
-
     def __del__(self):
         self.connect = False
         self.conn.close()
-
 
     @property
     def connected(self):
@@ -70,10 +65,9 @@ class Server:
                     rs = cursor.fetchall()
         finally:
             cursor.close()
-            log.log_info('row returned: %s' %len(rs))
+            log.log_info('row returned: %s' % len(rs))
             cls.__unlock()
             return rs
-
 
     # @classmethod
     def execute(cls, sql, args):
@@ -82,7 +76,8 @@ class Server:
             cls.__lock()
             with cls.conn.cursor() as cursor:
                 cursor.execute(sql.replace('?', '%s'), args)
-                affected = cursor.rowcount
+                lastrowid = cursor.lastrowid
+                rowcount = cursor.rowcount
                 if not cls.autocommit:
                     cls.conn.commit()
         except BaseException as e:
@@ -91,18 +86,32 @@ class Server:
         finally:
             cursor.close()
             cls.__unlock()
-        return affected
+        return lastrowid, rowcount
+
+
+class Client(Server):
+
+    def __init__(self, server):
+
+        if not isinstance(server, Server):
+            raise TypeError("please input Server type.")
+        self.server = server
+
+    def __del__(self):
+        del self.server
 
 
 if __name__ == '__main__':
     log()
-    server = Server(user='mysqldb', password='mysqldb',db='sqldb')
+    server = Server(user='mysqldb', password='mysqldb', db='sqldb')
     server.execute("INSERT INTO `users` (`email`, `password`) VALUES (%s, %s)",
-                               ('webmaster@python.org', 'very-secret'))
+                   ('webmaster@python.org', 'very-secret'))
 
     rs = server.select("select `id`, `password` from `users` where `email`=?",
-                  ('webmaster@python.org'))
+                       'webmaster@python.org')
     print(rs)
 
-
-
+    myclient = Client(server)
+    rs1, ct = myclient.server.execute(
+        "delete from `users` where `email`=?",  'webmaster@python.org')
+    print(rs1, ct)
