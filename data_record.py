@@ -1,7 +1,7 @@
 
 import ctypes as cs
 
-class data_record(list):
+class data_record:
     def __init__(self, size_type, num, set_len=True):
         self._type = type(size_type)
         self.max_range = num
@@ -44,7 +44,7 @@ class data_record_fl(data_record):
             self.set_data(mydata)
 
     def set_data(self, mydata):
-        if not isinstance(data_list, list):
+        if not isinstance(mydata, list):
             raise ValueError("Invalid values type, need list")
         super(data_record_fl, self).set_data(mydata, len(mydata))
         
